@@ -1,6 +1,6 @@
 import { Resource } from '@aws-cdk/core';
 import { Construct } from 'constructs';
-import { CfnRoute, CfnRouteProps } from '../apigatewayv2.generated';
+import { CfnRoute, CfnRouteProps, CfnAuthorizer } from '../apigatewayv2.generated';
 import { IRoute } from '../common';
 import { IHttpApi } from './api';
 import { HttpIntegration, IHttpRouteIntegration } from './integration';
@@ -103,6 +103,12 @@ export interface HttpRouteProps extends BatchHttpRouteOptions {
    * The key to this route. This is a combination of an HTTP method and an HTTP path.
    */
   readonly routeKey: HttpRouteKey;
+
+  /**
+   * Authorizer for a WebSocket API or an HTTP API.
+   * @default - No authorizer
+   */
+  readonly authorizer?: CfnAuthorizer;
 }
 
 /**
@@ -137,6 +143,10 @@ export class HttpRoute extends Resource implements IHttpRoute {
       apiId: props.httpApi.httpApiId,
       routeKey: props.routeKey.key,
       target: `integrations/${integration.integrationId}`,
+      ...props.authorizer ? {
+        authorizerId: props.authorizer.ref,
+        authorizationType: props.authorizer.authorizerType,
+      }: {},
     };
 
     const route = new CfnRoute(this, 'Resource', routeProps);

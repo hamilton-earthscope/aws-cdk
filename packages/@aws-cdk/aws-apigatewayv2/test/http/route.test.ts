@@ -2,7 +2,7 @@ import '@aws-cdk/assert/jest';
 import { Stack } from '@aws-cdk/core';
 import {
   HttpApi, HttpIntegrationType, HttpMethod, HttpRoute, HttpRouteIntegrationConfig, HttpRouteKey, IHttpRouteIntegration,
-  PayloadFormatVersion,
+  PayloadFormatVersion, CfnAuthorizer,
 } from '../../lib';
 
 describe('HttpRoute', () => {
@@ -75,6 +75,31 @@ describe('HttpRoute', () => {
       integration: new DummyIntegration(),
       routeKey: HttpRouteKey.with('/books/', HttpMethod.GET),
     })).toThrowError(/path must always start with a "\/" and not end with a "\/"/);
+  });
+
+  test('authorizer is configured correctly', () => {
+    const stack = new Stack();
+    const httpApi = new HttpApi(stack, 'HttpApi');
+
+    const authorizer = new CfnAuthorizer(stack, 'authorizer', {
+      apiId: httpApi.httpApiId,
+      authorizerType: 'JWT',
+      name: 'my-authorizer',
+      identitySource: ['$request.header.Authorization'],
+    });
+
+    new HttpRoute(stack, 'HttpRoute', {
+      httpApi,
+      integration: new DummyIntegration(),
+      routeKey: HttpRouteKey.with('/books', HttpMethod.GET),
+      authorizer,
+    });
+
+    expect(stack).toHaveResource('AWS::ApiGatewayV2::Authorizer', {
+      ApiId: stack.resolve(httpApi.httpApiId),
+      AuthorizerType: 'JWT',
+      name: 'my-authorizer',
+    });
   });
 
 });
